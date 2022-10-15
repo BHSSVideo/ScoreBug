@@ -9,7 +9,7 @@ import {
   TextInput,
   Title,
 } from "@mantine/core";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocalStorage } from "@mantine/hooks";
 
 export const App = () => {
@@ -34,36 +34,51 @@ export const App = () => {
       ],
       clock: {
         period: 0,
-        remaining: 0,
         running: false,
       },
     },
   });
+  const [minutes, setMinutes] = useState(40);
+  const [seconds, setSeconds] = useState(0);
+  const minuteRef = useRef(40);
+  const secondRef = useRef(0);
+
+  useEffect(() => {}, [minutes, seconds]);
 
   // Update clock when running
   useEffect(() => {
     if (!data.clock.running) return;
 
-    // More consistent than just decrementing
-    const start = Date.now();
-    const original = data.clock.remaining;
+    console.log("update");
 
     const handle = setInterval(() => {
-      const nextValue = original - (Date.now() - start);
+      if (secondRef.current === 0 && minuteRef.current === 0) {
+        clearInterval(handle);
 
-      if (nextValue)
         setData({
           ...data,
           clock: {
             ...data.clock,
-            running: nextValue > 0,
-            remaining: nextValue > 0 ? nextValue : 0,
+            running: false,
           },
         });
-    }, 100);
+
+        return;
+      }
+
+      if (secondRef.current === 0) {
+        setMinutes((old) => old - 1);
+        setSeconds(59);
+      } else setSeconds((old) => old - 1);
+    }, 1000);
 
     return () => clearInterval(handle);
-  }, [data]);
+  }, [data.clock.running]);
+
+  useEffect(() => {
+    secondRef.current = seconds;
+    minuteRef.current = minutes;
+  }, [minutes, seconds]);
 
   return (
     <Box
@@ -159,15 +174,8 @@ export const App = () => {
                     marginBottom: "-.25vw",
                   }}
                 >
-                  {new Date(data.clock.remaining)
-                    .getMinutes()
-                    .toString()
-                    .padStart(2, "0")}
-                  :
-                  {new Date(data.clock.remaining)
-                    .getSeconds()
-                    .toString()
-                    .padStart(2, "0")}
+                  {minutes.toString().padStart(2, "0")}:
+                  {seconds.toString().padStart(2, "0")}
                 </Title>
               </Box>
               <Box
@@ -293,38 +301,14 @@ export const App = () => {
             <NumberInput
               label="Minutes"
               min={0}
-              value={new Date(data.clock.remaining).getMinutes()}
-              onChange={(number) =>
-                setData({
-                  ...data,
-                  clock: {
-                    ...data.clock,
-                    remaining:
-                      data.clock.remaining +
-                      (number! > new Date(data.clock.remaining).getMinutes()
-                        ? 60000
-                        : -60000),
-                  },
-                })
-              }
+              value={minutes}
+              onChange={(number) => setMinutes(number!)}
             />
             <NumberInput
               label="Seconds"
               min={0}
-              value={new Date(data.clock.remaining).getSeconds()}
-              onChange={(number) =>
-                setData({
-                  ...data,
-                  clock: {
-                    ...data.clock,
-                    remaining:
-                      data.clock.remaining +
-                      (number! > new Date(data.clock.remaining).getSeconds()
-                        ? 1000
-                        : -1000),
-                  },
-                })
-              }
+              value={seconds}
+              onChange={(number) => setSeconds(number!)}
             />
           </Group>
           <Button
